@@ -1,12 +1,47 @@
 'use client';
 
 import { AuthForm, AuthFormData } from '@/components/auth/AuthForm';
+import { useAuth } from '@/contexts/AuthContext';
+import { REGISTER_USER_MUTATION } from '@/graphql/auth';
+import { useMutation } from '@apollo/client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const { login, isAuthenticated } = useAuth();
+  
+  const [registerMutation, { loading, error }] = useMutation(REGISTER_USER_MUTATION);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, router]);
+
   const handleSubmit = async (data: AuthFormData) => {
-    // TODO: Implement registration logic with backend API
-    console.log('Registration data:', data);
+    if (!data.name || !data.role) {
+      console.error('Name and role are required');
+      return;
+    }
+
+    try {
+      const response = await registerMutation({
+        variables: {
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          role: data.role,
+        },
+      });
+
+      const { token, user } = response.data.registerUser;
+      login(user, token);
+      router.push('/dashboard');
+    } catch (err) {
+      console.error('Registration error:', err);
+    }
   };
 
   return (
@@ -26,6 +61,16 @@ export default function RegisterPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <AuthForm mode="register" onSubmit={handleSubmit} />
+          {error && (
+            <p className="mt-2 text-center text-sm text-red-600">
+              {error.message}
+            </p>
+          )}
+          {loading && (
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Creating your account...
+            </p>
+          )}
         </div>
       </div>
     </div>
