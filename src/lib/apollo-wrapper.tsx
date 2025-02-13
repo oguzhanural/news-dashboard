@@ -5,7 +5,7 @@ import { setContext } from '@apollo/client/link/context';
 
 // For debugging purposes
 const API_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4000/graphql';
-console.log('Connecting to GraphQL API at:', API_URL);
+// console.log('Connecting to GraphQL API at:', API_URL);
 
 const httpLink = createHttpLink({
   uri: API_URL,
