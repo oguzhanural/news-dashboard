@@ -36,7 +36,7 @@ export default function LoginPage() {
 
       console.log('Login response:', response);
 
-      const { token, user } = response.data.login;
+      const { token, user } = response.data.loginUser;
       login(user, token);
       router.push('/dashboard');
     } catch (err) {
