@@ -29,7 +29,7 @@ export default function CreateNewsPage() {
   const [createNews, { loading }] = useMutation(CREATE_NEWS_MUTATION);
   
   const { data: categoriesData } = useQuery(GET_CATEGORIES_QUERY);
-  const categories = categoriesData?.getCategories || [];
+  const categories = categoriesData?.categories || [];
   
   // Load saved draft from localStorage on component mount
   useEffect(() => {
@@ -94,18 +94,20 @@ export default function CreateNewsPage() {
     }
 
     try {
+      // Convert featuredImage to the required images array format
+      const newsImages = featuredImage ? [featuredImage] : [];
+      
       await createNews({
         variables: {
           input: {
             title,
             content,
             summary: summary || null,
-            slug: slug || null,
             categoryId,
-            publishDate: publishDate || null,
             status,
             tags,
-            featuredImage
+            images: newsImages
+            // Remove fields not in CreateNewsInput: slug, publishDate, featuredImage
           }
         }
       });
