@@ -8,12 +8,14 @@ import RichTextEditor from '@/components/Editor/RichTextEditor';
 import FeaturedImageUpload, { NewsImageData } from '@/components/News/FeaturedImageUpload';
 import { LoaderCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Draft storage key for localStorage
 const DRAFT_STORAGE_KEY = 'news_draft_data';
 
 export default function CreateNewsPage() {
   const router = useRouter();
+  const { isAuthenticated, token } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [summary, setSummary] = useState('');
@@ -30,6 +32,13 @@ export default function CreateNewsPage() {
   
   const { data: categoriesData } = useQuery(GET_CATEGORIES_QUERY);
   const categories = categoriesData?.categories || [];
+  
+  // Check authentication when component mounts
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, router]);
   
   // Load saved draft from localStorage on component mount
   useEffect(() => {
@@ -72,6 +81,12 @@ export default function CreateNewsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    
+    if (!isAuthenticated || !token) {
+      setErrorMessage('You must be logged in to create articles');
+      router.push('/login');
+      return;
+    }
     
     if (!title.trim()) {
       setErrorMessage('Title is required');
