@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
 import Link from 'next/link';
 import { GET_ALL_NEWS_QUERY } from '@/graphql/news';
@@ -24,11 +24,10 @@ interface NewsItem {
 }
 
 interface NewsListResponse {
-  getAllNews: {
-    items: NewsItem[];
+  newsList: {
+    news: NewsItem[];
     total: number;
-    page: number;
-    limit: number;
+    hasMore: boolean;
   };
 }
 
@@ -36,16 +35,25 @@ export default function NewsListPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [status, setStatus] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+
+  // Create filter object
+  const filter = status ? { status } : undefined;
 
   const { data, loading, error, refetch } = useQuery<NewsListResponse>(GET_ALL_NEWS_QUERY, {
-    variables: { page, limit, status },
+    variables: { limit, offset, filter },
     fetchPolicy: 'cache-and-network',
   });
+
+  // Update offset when page changes
+  useEffect(() => {
+    setOffset((page - 1) * limit);
+  }, [page, limit]);
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setStatus(value || null);
-    setPage(1);
+    setPage(1); // Reset to first page when changing filter
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -141,7 +149,7 @@ export default function NewsListPage() {
           </div>
         )}
 
-        {!loading && !error && (!data?.getAllNews.items || data.getAllNews.items.length === 0) && (
+        {!loading && !error && (!data?.newsList.news || data.newsList.news.length === 0) && (
           <div className="text-center py-10 bg-white shadow-sm rounded-lg">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
@@ -160,7 +168,7 @@ export default function NewsListPage() {
           </div>
         )}
 
-        {!loading && !error && data?.getAllNews.items && data.getAllNews.items.length > 0 && (
+        {!loading && !error && data?.newsList.news && data.newsList.news.length > 0 && (
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-300">
@@ -187,7 +195,7 @@ export default function NewsListPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {data.getAllNews.items.map((item) => (
+                  {data.newsList.news.map((item) => (
                     <tr key={item.id}>
                       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
                         <div className="font-medium text-gray-900">{item.title}</div>
@@ -246,7 +254,7 @@ export default function NewsListPage() {
               </table>
             </div>
 
-            {data.getAllNews.total > limit && (
+            {data.newsList.total > limit && (
               <div className="mt-4 flex items-center justify-between">
                 <div className="flex-1 flex justify-between sm:hidden">
                   <button
@@ -258,7 +266,7 @@ export default function NewsListPage() {
                   </button>
                   <button
                     onClick={() => setPage(page + 1)}
-                    disabled={page * limit >= data.getAllNews.total}
+                    disabled={page * limit >= data.newsList.total}
                     className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
@@ -268,8 +276,8 @@ export default function NewsListPage() {
                   <div>
                     <p className="text-sm text-gray-700">
                       Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{' '}
-                      <span className="font-medium">{Math.min(page * limit, data.getAllNews.total)}</span> of{' '}
-                      <span className="font-medium">{data.getAllNews.total}</span> results
+                      <span className="font-medium">{Math.min(page * limit, data.newsList.total)}</span> of{' '}
+                      <span className="font-medium">{data.newsList.total}</span> results
                     </p>
                   </div>
                   <div>
@@ -287,7 +295,7 @@ export default function NewsListPage() {
                       {/* Page numbers would go here */}
                       <button
                         onClick={() => setPage(page + 1)}
-                        disabled={page * limit >= data.getAllNews.total}
+                        disabled={page * limit >= data.newsList.total}
                         className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span className="sr-only">Next</span>
