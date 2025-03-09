@@ -1,5 +1,17 @@
 import { gql } from '@apollo/client';
 
+// Define the NewsFilterInput type
+export const NEWS_FILTER_FRAGMENTS = gql`
+  input NewsFilterInput {
+    status: String
+    categoryId: String
+    authorId: String
+    tags: [String]
+    fromDate: String
+    toDate: String
+  }
+`;
+
 export const CREATE_NEWS_MUTATION = gql`
   mutation CreateNews($input: CreateNewsInput!) {
     createNews(input: $input) {
@@ -115,9 +127,9 @@ export const GET_NEWS_ITEM_QUERY = gql`
 `;
 
 export const GET_ALL_NEWS_QUERY = gql`
-  query GetAllNews($page: Int, $limit: Int, $status: NewsStatus) {
-    getAllNews(page: $page, limit: $limit, status: $status) {
-      items {
+  query GetNewsList($limit: Int, $offset: Int, $filter: NewsFilterInput) {
+    newsList(limit: $limit, offset: $offset, filter: $filter) {
+      news {
         id
         title
         summary
@@ -132,14 +144,19 @@ export const GET_ALL_NEWS_QUERY = gql`
         }
         status
         tags
-        images
+        images {
+          url
+          caption
+          altText
+          credit
+          isMain
+        }
         publishDate
         createdAt
         updatedAt
       }
       total
-      page
-      limit
+      hasMore
     }
   }
 `;
