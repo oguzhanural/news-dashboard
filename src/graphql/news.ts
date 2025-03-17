@@ -2,8 +2,14 @@ import { gql } from '@apollo/client';
 
 // Define the NewsFilterInput type
 export const NEWS_FILTER_FRAGMENTS = gql`
+  enum NewsStatus {
+    DRAFT
+    PUBLISHED
+    ARCHIVED
+  }
+
   input NewsFilterInput {
-    status: String
+    status: NewsStatus
     categoryId: String
     authorId: String
     tags: [String]
@@ -127,7 +133,7 @@ export const GET_NEWS_ITEM_QUERY = gql`
 `;
 
 export const GET_ALL_NEWS_QUERY = gql`
-  query GetNewsList($limit: Int, $offset: Int, $filter: NewsFilterInput, $sort: NewsSortInput) {
+  query GetNewsList($limit: Int!, $offset: Int!, $filter: NewsFilterInput, $sort: NewsSortInput!) {
     newsList(limit: $limit, offset: $offset, filter: $filter, sort: $sort) {
       news {
         id

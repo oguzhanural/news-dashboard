@@ -40,170 +40,138 @@ export default function NewsListPage() {
   const [limit, setLimit] = useState(10);
   const [status, setStatus] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
-  const [combinedNews, setCombinedNews] = useState<NewsItem[]>([]);
-  const [totalItems, setTotalItems] = useState(0);
   const [isCustomLoading, setIsCustomLoading] = useState(false);
 
-  // Only include filter if status is provided
+  // Simplify filter creation
   const filter = status ? { status } : undefined;
   
-  // Additional debugging to understand what's happening with the filter
+  // Debug logging
   useEffect(() => {
-    console.log('Current filter object:', JSON.stringify(filter));
-    console.log('Status value:', status);
+    console.log('Current filter:', filter);
+    console.log('Current status:', status);
   }, [filter, status]);
-  
-  console.log('Current filter:', filter);
 
   const { data, loading, error, refetch } = useQuery<NewsListResponse>(GET_ALL_NEWS_QUERY, {
     variables: {
-      limit: limit,
-      offset: offset,
-      filter: status ? { status } : undefined,
+      limit,
+      offset,
+      filter,
       sort: { field: 'CREATED_AT', order: 'DESC' }
     },
     fetchPolicy: 'network-only',
-    nextFetchPolicy: 'cache-first',
+    notifyOnNetworkStatusChange: true,
     onCompleted: (data) => {
-      if (!status && data?.newsList?.news) {
-        console.log('Main query completed with all news:', data.newsList.news.length);
-      }
+      console.log('Query completed with full response:', {
+        data,
+        variables: {
+          limit,
+          offset,
+          filter,
+          sort: { field: 'CREATED_AT', order: 'DESC' }
+        }
+      });
     },
     onError: (error) => {
-      console.error('GraphQL query error:', error.message);
+      console.error('GraphQL query error:', {
+        message: error.message,
+        networkError: error.networkError?.message,
+        graphQLErrors: error.graphQLErrors?.map(err => ({
+          message: err.message,
+          path: err.path,
+          extensions: err.extensions
+        })),
+        filter
+      });
     }
   });
+
+  // Simplify display logic - use data directly
+  const displayNews = data?.newsList?.news || [];
+  const displayTotal = data?.newsList?.total || 0;
+
+  // Log whenever the query result changes
+  useEffect(() => {
+    if (error) {
+      console.error('Query error state:', error);
+    }
+    if (data) {
+      console.log('Query data state:', {
+        newsCount: data.newsList?.news?.length || 0,
+        total: data.newsList?.total || 0,
+        statuses: data.newsList?.news?.map(n => n.status) || [],
+        hasMore: data.newsList?.hasMore
+      });
+    }
+  }, [data, error]);
+
+  // Add effect to log query variables
+  useEffect(() => {
+    console.log('Query variables:', {
+      limit,
+      offset,
+      filter,
+      sort: { field: 'CREATED_AT', order: 'DESC' }
+    });
+  }, [limit, offset, filter]);
 
   // Update offset when page changes
   useEffect(() => {
     setOffset((page - 1) * limit);
   }, [page, limit]);
 
-  // Log data for debugging
-  useEffect(() => {
-    if (data) {
-      console.log('News data received:', data);
-      console.log('Total news items:', data.newsList.total);
-      console.log('News items:', data.newsList.news.length);
-      console.log('News statuses:', data.newsList.news.map(item => item.status));
-    }
-  }, [data]);
-
-  // Function to fetch all news items by combining different status queries
-  const fetchAllNews = useCallback(async () => {
-    if (status === null) {
-      setIsCustomLoading(true);
-      try {
-        console.log('Fetching all news types manually...');
-        
-        // Create a direct GraphQL query without status filter
-        const allNewsPromise = refetch({ 
-          filter: undefined,  // Use undefined instead of a specific status
-          limit: 100,
-          offset: 0
-        });
-        
-        const result = await allNewsPromise;
-        
-        if (result.data?.newsList?.news) {
-          setCombinedNews(result.data.newsList.news);
-          setTotalItems(result.data.newsList.total);
-          console.log('Fetched all news types:', result.data.newsList.news.length, 'items');
-        } else {
-          // Fallback to individual status queries if the undefined filter doesn't work
-          console.log('Fetching individual status types as fallback...');
-          const draftPromise = refetch({ 
-            filter: { status: 'DRAFT' },
-            limit: 100,
-            offset: 0
-          });
-          
-          const publishedPromise = refetch({
-            filter: { status: 'PUBLISHED' },
-            limit: 100,
-            offset: 0
-          });
-          
-          const archivedPromise = refetch({
-            filter: { status: 'ARCHIVED' },
-            limit: 100,
-            offset: 0
-          });
-          
-          const results = await Promise.all([
-            draftPromise,
-            publishedPromise,
-            archivedPromise
-          ]);
-          
-          // Combine all results
-          const allNews: NewsItem[] = [];
-          let total = 0;
-          
-          results.forEach((result: QueryResult) => {
-            if (result.data?.newsList?.news) {
-              allNews.push(...result.data.newsList.news);
-              total += result.data.newsList.news.length; // Use length instead of total
-            }
-          });
-          
-          setCombinedNews(allNews);
-          setTotalItems(allNews.length);
-          console.log('Combined all news types from individual queries:', allNews.length, 'items');
-        }
-      } catch (err) {
-        console.error('Error fetching all news:', err);
-      } finally {
-        setIsCustomLoading(false);
-      }
-    } else {
-      // Reset combined data when using a specific filter
-      setCombinedNews([]);
-      setTotalItems(0);
-    }
-  }, [status, refetch]);
-
-  // Fetch all news when status changes to null (All)
-  useEffect(() => {
-    fetchAllNews();
-  }, [status, fetchAllNews]);
-
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     const newStatus = value === '' ? null : value;
     
-    console.log('Status changing from:', status, 'to:', newStatus);
+    console.log('Status changing to:', newStatus);
     setStatus(newStatus);
-    setPage(1); // Reset to first page when changing filter
+    setPage(1);
+    setOffset(0);
     
-    // Force a immediate refetch with the new status
-    if (newStatus) {
-      console.log(`Refetching with specific status: ${newStatus}`);
-      refetch({ 
-        filter: { status: newStatus },
-        limit: limit,
-        offset: 0
+    const refetchVariables = {
+      limit,
+      offset: 0,
+      filter: newStatus ? { status: newStatus } : undefined,
+      sort: { field: 'CREATED_AT', order: 'DESC' }
+    };
+    
+    console.log('Refetching with variables:', refetchVariables);
+    
+    refetch(refetchVariables)
+      .then(result => {
+        if (!result.data) {
+          console.warn('No data in response:', result);
+          return;
+        }
+        console.log('Refetch complete response:', {
+          success: true,
+          newsCount: result.data.newsList?.news?.length || 0,
+          total: result.data.newsList?.total || 0,
+          statuses: result.data.newsList?.news?.map(n => n.status) || [],
+          filter: refetchVariables.filter
+        });
+      })
+      .catch(error => {
+        console.error('Refetch error:', {
+          message: error.message,
+          stack: error.stack,
+          filter: refetchVariables.filter
+        });
       });
-    } else {
-      console.log('Refetching all news (no status filter)');
-      refetch({ 
-        filter: undefined,
-        limit: limit,
-        offset: 0
-      });
-    }
   };
 
-  // Determine which news data to display
-  const displayNews = status === null && combinedNews.length > 0 
-    ? combinedNews 
-    : (status === null && data?.newsList?.news && data.newsList.news.length > 0)
-      ? data.newsList.news
-      : data?.newsList.news || [];
-  
-  const displayTotal = status === null && totalItems > 0
-    ? totalItems
-    : data?.newsList.total || 0;
+  // Add debug output for current state
+  useEffect(() => {
+    console.log('Current state:', {
+      status,
+      filter,
+      offset,
+      limit,
+      page,
+      displayNewsCount: displayNews.length,
+      displayTotal
+    });
+  }, [status, filter, offset, limit, page, displayNews.length, displayTotal]);
 
   const isLoadingData = loading || isCustomLoading;
 
@@ -228,6 +196,17 @@ export default function NewsListPage() {
       day: 'numeric',
     });
   };
+
+  // Add loading and error states to the UI
+  if (error) {
+    console.error('Rendering error state:', error);
+    return (
+      <div className="px-4 py-8 text-red-600">
+        <p>Error loading news: {error.message}</p>
+        <pre className="mt-2 text-sm">{JSON.stringify(error, null, 2)}</pre>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8">
@@ -279,24 +258,6 @@ export default function NewsListPage() {
               <span className="sr-only">Loading...</span>
             </div>
             <p className="mt-2 text-sm text-gray-500">Loading news articles...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-md bg-red-50 p-4 my-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Error loading news articles</h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <p>{error.message}</p>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
