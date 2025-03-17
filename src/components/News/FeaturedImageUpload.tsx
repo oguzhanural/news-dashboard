@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CldUploadWidget } from 'next-cloudinary';
 import { ImagePlus, X, Trash, AlertCircle, LoaderCircle } from 'lucide-react';
 import { useMutation } from '@apollo/client';
@@ -27,11 +27,23 @@ export default function FeaturedImageUpload({ onImageUpload, imageData }: Featur
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '';
   
-  const isConfigured = !!cloudName;
-  const hasUploadPreset = !!uploadPreset;
+  const isConfigured = !!cloudName && cloudName.length > 0;
+  const hasUploadPreset = !!uploadPreset && uploadPreset.length > 0;
+
+  // Log environment variables for debugging (don't include in production)
+  useEffect(() => {
+    if (!isConfigured || !hasUploadPreset) {
+      console.warn('Cloudinary configuration is incomplete:',
+        { 
+          cloudNameConfigured: !!cloudName, 
+          uploadPresetConfigured: !!uploadPreset 
+        }
+      );
+    }
+  }, [cloudName, uploadPreset, isConfigured, hasUploadPreset]);
 
   // Mutation for deleting images from Cloudinary
   const [deleteCloudinaryImage] = useMutation(DELETE_CLOUDINARY_IMAGE_MUTATION, {
@@ -116,86 +128,99 @@ export default function FeaturedImageUpload({ onImageUpload, imageData }: Featur
           <h3 className="mb-2 text-lg font-medium">Featured Image</h3>
           <p className="text-gray-500 mb-4">Upload the main image for this news article</p>
           
-          {error && (
-            <div className="p-4 mb-4 border border-red-300 bg-red-50 rounded-md">
-              <div className="flex">
-                <AlertCircle className="h-5 w-5 text-red-400" />
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
+          <div className="mt-6">
+            {!isConfigured || !hasUploadPreset ? (
+              <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">
+                <p className="font-medium">Cloudinary configuration missing</p>
+                <p>Please check your environment variables for NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.</p>
               </div>
-            </div>
-          )}
-          
-          {!isConfigured || !hasUploadPreset ? (
-            <div className="p-4 border border-red-300 bg-red-50 rounded-md">
-              <div className="flex">
-                <AlertCircle className="h-5 w-5 text-red-400" />
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">
-                    Cloudinary is not configured properly. Please check your environment variables.
-                  </p>
-                </div>
+            ) : error ? (
+              <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg flex items-start">
+                <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+                <p>{error}</p>
               </div>
-            </div>
-          ) : (
-            <CldUploadWidget
-              uploadPreset={uploadPreset}
-              onSuccess={handleUploadSuccess}
-              onError={(error: any) => {
-                setUploading(false);
-                setError(error.statusText || 'Upload failed. Please try again.');
-              }}
-              options={{
-                cloudName,
-                uploadPreset,
-                multiple: false,
-                sources: ['local', 'url', 'camera'],
-                resourceType: 'image',
-                maxFileSize: 10485760, // 10MB
-                styles: {
-                  palette: {
-                    window: '#F5F5F5',
-                    windowBorder: '#90A0B3',
-                    tabIcon: '#0078FF',
-                    menuIcons: '#5A616A',
-                    textDark: '#000000',
-                    textLight: '#FFFFFF',
-                    link: '#0078FF',
-                    action: '#FF620C',
-                    inactiveTabIcon: '#0E2F5A',
-                    error: '#F44235',
-                    inProgress: '#0078FF',
-                    complete: '#20B832',
-                    sourceBg: '#E4EBF1'
+            ) : null}
+            
+            {isConfigured && hasUploadPreset ? (
+              <CldUploadWidget
+                uploadPreset={uploadPreset}
+                onSuccess={handleUploadSuccess}
+                onError={(error) => {
+                  console.error('Upload error:', error);
+                  setError('Failed to upload image. Please try again.');
+                  setUploading(false);
+                }}
+                options={{
+                  cloudName,
+                  uploadPreset,
+                  multiple: false,
+                  sources: ['local', 'url', 'camera'],
+                  resourceType: 'image',
+                  maxFileSize: 10485760, // 10MB
+                  styles: {
+                    palette: {
+                      window: '#F5F5F5',
+                      windowBorder: '#90A0B3',
+                      tabIcon: '#0078FF',
+                      menuIcons: '#5A616A',
+                      textDark: '#000000',
+                      textLight: '#FFFFFF',
+                      link: '#0078FF',
+                      action: '#FF620C',
+                      inactiveTabIcon: '#0E2F5A',
+                      error: '#F44235',
+                      inProgress: '#0078FF',
+                      complete: '#20B832',
+                      sourceBg: '#E4EBF1'
+                    }
                   }
-                }
-              }}
-            >
-              {({ open }) => (
-                <button
-                  type="button"
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                  onClick={() => {
-                    setUploading(true);
-                    setError(null);
-                    open();
-                  }}
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <span className="flex items-center">
-                      <LoaderCircle className="w-5 h-5 mr-2 animate-spin" /> Uploading...
-                    </span>
-                  ) : (
-                    <span className="flex items-center">
-                      <ImagePlus className="w-5 h-5 mr-2" /> Upload Image
-                    </span>
-                  )}
-                </button>
-              )}
-            </CldUploadWidget>
-          )}
+                }}
+              >
+                {({ open }) => (
+                  <button
+                    type="button"
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    onClick={() => {
+                      try {
+                        setUploading(true);
+                        setError(null);
+                        if (typeof open === 'function') {
+                          open();
+                        } else {
+                          console.error('Cloudinary widget open function is not available');
+                          setError('Upload widget failed to initialize. Please refresh the page and try again.');
+                          setUploading(false);
+                        }
+                      } catch (err) {
+                        console.error('Error opening upload widget:', err);
+                        setError('Error initializing upload widget. Please refresh the page.');
+                        setUploading(false);
+                      }
+                    }}
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <span className="flex items-center">
+                        <LoaderCircle className="w-5 h-5 mr-2 animate-spin" /> Uploading...
+                      </span>
+                    ) : (
+                      <span className="flex items-center">
+                        <ImagePlus className="w-5 h-5 mr-2" /> Upload Image
+                      </span>
+                    )}
+                  </button>
+                )}
+              </CldUploadWidget>
+            ) : (
+              <button
+                type="button"
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white opacity-50 cursor-not-allowed"
+                disabled={true}
+              >
+                <ImagePlus className="w-5 h-5 mr-2" /> Upload Image
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
