@@ -127,33 +127,23 @@ export const GET_NEWS_ITEM_QUERY = gql`
 `;
 
 export const GET_ALL_NEWS_QUERY = gql`
-  query GetNewsList($limit: Int, $offset: Int, $filter: NewsFilterInput) {
-    newsList(limit: $limit, offset: $offset, filter: $filter) {
+  query GetNewsList($limit: Int, $offset: Int, $filter: NewsFilterInput, $sort: NewsSortInput) {
+    newsList(limit: $limit, offset: $offset, filter: $filter, sort: $sort) {
       news {
         id
         title
         summary
-        slug
-        category {
-          id
-          name
-        }
+        status
+        publishDate
+        createdAt
         author {
           id
           name
         }
-        status
-        tags
-        images {
-          url
-          caption
-          altText
-          credit
-          isMain
+        category {
+          id
+          name
         }
-        publishDate
-        createdAt
-        updatedAt
       }
       total
       hasMore
