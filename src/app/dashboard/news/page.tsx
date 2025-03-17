@@ -31,6 +31,10 @@ interface NewsListResponse {
   };
 }
 
+interface QueryResult {
+  data?: NewsListResponse;
+}
+
 export default function NewsListPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -43,12 +47,31 @@ export default function NewsListPage() {
   // Only include filter if status is provided
   const filter = status ? { status } : undefined;
   
+  // Additional debugging to understand what's happening with the filter
+  useEffect(() => {
+    console.log('Current filter object:', JSON.stringify(filter));
+    console.log('Status value:', status);
+  }, [filter, status]);
+  
   console.log('Current filter:', filter);
 
   const { data, loading, error, refetch } = useQuery<NewsListResponse>(GET_ALL_NEWS_QUERY, {
-    variables: { limit, offset, filter },
+    variables: {
+      limit: limit,
+      offset: offset,
+      filter: status ? { status } : undefined,
+      sort: { field: 'CREATED_AT', order: 'DESC' }
+    },
     fetchPolicy: 'network-only',
     nextFetchPolicy: 'cache-first',
+    onCompleted: (data) => {
+      if (!status && data?.newsList?.news) {
+        console.log('Main query completed with all news:', data.newsList.news.length);
+      }
+    },
+    onError: (error) => {
+      console.error('GraphQL query error:', error.message);
+    }
   });
 
   // Update offset when page changes
@@ -62,6 +85,7 @@ export default function NewsListPage() {
       console.log('News data received:', data);
       console.log('Total news items:', data.newsList.total);
       console.log('News items:', data.newsList.news.length);
+      console.log('News statuses:', data.newsList.news.map(item => item.status));
     }
   }, [data]);
 
@@ -71,27 +95,62 @@ export default function NewsListPage() {
       setIsCustomLoading(true);
       try {
         console.log('Fetching all news types manually...');
-        const results = await Promise.all([
-          refetch({ filter: { status: 'DRAFT' } }),
-          refetch({ filter: { status: 'PUBLISHED' } }),
-          refetch({ filter: { status: 'ARCHIVED' } })
-        ]);
         
-        // Combine all results
-        const allNews: NewsItem[] = [];
-        let total = 0;
-        
-        results.forEach(result => {
-          if (result.data?.newsList?.news) {
-            allNews.push(...result.data.newsList.news);
-            total += result.data.newsList.total;
-          }
+        // Create a direct GraphQL query without status filter
+        const allNewsPromise = refetch({ 
+          filter: undefined,  // Use undefined instead of a specific status
+          limit: 100,
+          offset: 0
         });
         
-        // Set combined data
-        setCombinedNews(allNews);
-        setTotalItems(total);
-        console.log('Combined all news types:', allNews.length, 'items');
+        const result = await allNewsPromise;
+        
+        if (result.data?.newsList?.news) {
+          setCombinedNews(result.data.newsList.news);
+          setTotalItems(result.data.newsList.total);
+          console.log('Fetched all news types:', result.data.newsList.news.length, 'items');
+        } else {
+          // Fallback to individual status queries if the undefined filter doesn't work
+          console.log('Fetching individual status types as fallback...');
+          const draftPromise = refetch({ 
+            filter: { status: 'DRAFT' },
+            limit: 100,
+            offset: 0
+          });
+          
+          const publishedPromise = refetch({
+            filter: { status: 'PUBLISHED' },
+            limit: 100,
+            offset: 0
+          });
+          
+          const archivedPromise = refetch({
+            filter: { status: 'ARCHIVED' },
+            limit: 100,
+            offset: 0
+          });
+          
+          const results = await Promise.all([
+            draftPromise,
+            publishedPromise,
+            archivedPromise
+          ]);
+          
+          // Combine all results
+          const allNews: NewsItem[] = [];
+          let total = 0;
+          
+          results.forEach((result: QueryResult) => {
+            if (result.data?.newsList?.news) {
+              allNews.push(...result.data.newsList.news);
+              total += result.data.newsList.news.length; // Use length instead of total
+            }
+          });
+          
+          setCombinedNews(allNews);
+          setTotalItems(allNews.length);
+          console.log('Combined all news types from individual queries:', allNews.length, 'items');
+        }
       } catch (err) {
         console.error('Error fetching all news:', err);
       } finally {
@@ -111,14 +170,36 @@ export default function NewsListPage() {
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    setStatus(value === '' ? null : value);
+    const newStatus = value === '' ? null : value;
+    
+    console.log('Status changing from:', status, 'to:', newStatus);
+    setStatus(newStatus);
     setPage(1); // Reset to first page when changing filter
+    
+    // Force a immediate refetch with the new status
+    if (newStatus) {
+      console.log(`Refetching with specific status: ${newStatus}`);
+      refetch({ 
+        filter: { status: newStatus },
+        limit: limit,
+        offset: 0
+      });
+    } else {
+      console.log('Refetching all news (no status filter)');
+      refetch({ 
+        filter: undefined,
+        limit: limit,
+        offset: 0
+      });
+    }
   };
 
   // Determine which news data to display
   const displayNews = status === null && combinedNews.length > 0 
     ? combinedNews 
-    : data?.newsList.news || [];
+    : (status === null && data?.newsList?.news && data.newsList.news.length > 0)
+      ? data.newsList.news
+      : data?.newsList.news || [];
   
   const displayTotal = status === null && totalItems > 0
     ? totalItems
@@ -265,7 +346,7 @@ export default function NewsListPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {displayNews.map((item) => (
+                  {displayNews.map((item: NewsItem) => (
                     <tr key={item.id}>
                       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
                         <div className="font-medium text-gray-900">{item.title}</div>
