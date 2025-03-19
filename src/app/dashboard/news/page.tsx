@@ -86,6 +86,7 @@ export default function NewsListPage() {
   });
 
   // Simplify display logic - use data directly
+  // some error here
   const displayNews = data?.newsList?.news || [];
   const displayTotal = data?.newsList?.total || 0;
 
