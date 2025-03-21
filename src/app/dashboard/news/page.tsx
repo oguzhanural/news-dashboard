@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useQuery } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client';
 import Link from 'next/link';
-import { GET_ALL_NEWS_QUERY } from '@/graphql/news';
+import { GET_ALL_NEWS_QUERY, DELETE_NEWS_MUTATION } from '@/graphql/news';
 import { PlusIcon, PencilIcon, TrashIcon, EyeIcon } from 'lucide-react';
 import { NewsStatus } from '@/graphql/news';
+import toast from 'react-hot-toast';
 
 interface NewsItem {
   id: string;
@@ -200,6 +201,24 @@ export default function NewsListPage() {
     });
   };
 
+  const [deleteNews] = useMutation(DELETE_NEWS_MUTATION, {
+    onCompleted: () => {
+      toast.success('News article deleted successfully');
+      refetch(); // Refetch the news list to update the UI
+    },
+    onError: (error) => {
+      toast.error(`Error deleting news: ${error.message}`);
+    }
+  });
+  
+  const handleDeleteNews = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this news article?')) {
+      deleteNews({
+        variables: { id }
+      });
+    }
+  };
+
   // Add loading and error states to the UI
   if (error) {
     console.error('Rendering error state:', error);
@@ -349,12 +368,7 @@ export default function NewsListPage() {
                             <span className="sr-only">View</span>
                           </Link>
                           <button
-                            onClick={() => {
-                              if (window.confirm('Are you sure you want to delete this news article?')) {
-                                // Delete functionality will be implemented later
-                                console.log('Delete', item.id);
-                              }
-                            }}
+                            onClick={() => handleDeleteNews(item.id)}
                             className="text-red-600 hover:text-red-900"
                             title="Delete"
                           >
