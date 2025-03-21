@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@/types/user';
+import toast from 'react-hot-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -52,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(newToken);
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(newUser));
+    toast.success(`Welcome back, ${newUser.name || 'User'}!`);
   };
 
   const logout = () => {
@@ -59,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    toast.success('Logged out successfully');
   };
 
   return (
