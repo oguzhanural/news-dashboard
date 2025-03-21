@@ -18,8 +18,8 @@ import {
 
 const navigation = [
   { name: 'Home', href: '/dashboard', icon: HomeIcon },
-  { name: 'Profiles', href: '/dashboard/profiles', icon: UserCircleIcon },
-  { name: 'My Account', href: '/dashboard/account', icon: UserCircleIcon },
+  { name: 'News', href: '/dashboard/news', icon: UserCircleIcon },
+  { name: 'My Account', href: '/dashboard/profile', icon: UserCircleIcon },
   { name: 'Network', href: '/dashboard/network', icon: UserGroupIcon },
   { name: 'Authentication', href: '/dashboard/auth', icon: KeyIcon },
   { name: 'Help', href: '/dashboard/help', icon: QuestionMarkCircleIcon },
