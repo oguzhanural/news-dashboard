@@ -5,6 +5,7 @@ import { useQuery } from '@apollo/client';
 import Link from 'next/link';
 import { GET_ALL_NEWS_QUERY } from '@/graphql/news';
 import { PlusIcon, PencilIcon, TrashIcon, EyeIcon } from 'lucide-react';
+import { NewsStatus } from '@/graphql/news';
 
 interface NewsItem {
   id: string;
@@ -38,7 +39,8 @@ interface QueryResult {
 export default function NewsListPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [status, setStatus] = useState<string | null>(null);
+  // change status type to NewsStatus
+  const [status, setStatus] = useState<NewsStatus | null>(null);
   const [offset, setOffset] = useState(0);
   const [isCustomLoading, setIsCustomLoading] = useState(false);
 
@@ -122,7 +124,7 @@ export default function NewsListPage() {
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    const newStatus = value === '' ? null : value;
+    const newStatus = value === '' ? null : ( value as NewsStatus);
     
     console.log('Status changing to:', newStatus);
     setStatus(newStatus);
