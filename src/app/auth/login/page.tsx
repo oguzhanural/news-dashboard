@@ -6,14 +6,14 @@ import { LOGIN_MUTATION } from '@/graphql/auth';
 import { useMutation } from '@apollo/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated } = useAuth();
-  const [errorMessage, setErrorMessage] = useState<string>('');
   
-  const [loginMutation, { loading, error }] = useMutation(LOGIN_MUTATION);
+  const [loginMutation, { loading }] = useMutation(LOGIN_MUTATION);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -43,14 +43,14 @@ export default function LoginPage() {
       console.error('Login error:', err);
       if (err instanceof Error) {
         if (err.message.includes('Failed to fetch')) {
-          setErrorMessage('Unable to connect to the server. Please make sure the backend server is running.');
+          toast.error('Unable to connect to the server. Please make sure the backend server is running.');
         } else if (err.message.includes('400')) {
-          setErrorMessage('Invalid login credentials. Please check your email and password.');
+          toast.error('Invalid login credentials. Please check your email and password.');
         } else {
-          setErrorMessage(err.message);
+          toast.error(err.message);
         }
       } else {
-        setErrorMessage('An unexpected error occurred');
+        toast.error('An unexpected error occurred');
       }
     }
   };
@@ -72,11 +72,6 @@ export default function LoginPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <AuthForm mode="login" onSubmit={handleSubmit} />
-          {errorMessage && (
-            <p className="mt-2 text-center text-sm text-red-600">
-              {errorMessage}
-            </p>
-          )}
           {loading && (
             <p className="mt-2 text-center text-sm text-gray-600">
               Logging in...
