@@ -9,6 +9,7 @@ import FeaturedImageUpload, { NewsImageData } from '@/components/News/FeaturedIm
 import { LoaderCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 // Draft storage key for localStorage
 const DRAFT_STORAGE_KEY = 'news_draft_data';
@@ -85,28 +86,28 @@ export default function CreateNewsPage() {
     
     // Check if authentication is still valid
     if (!isAuthenticated || !token) {
-      setErrorMessage('Your session has expired. Please log in again.');
+      toast.error('Your session has expired. Please log in again.');
       router.push('/login');
       return;
     }
     
     if (!title.trim()) {
-      setErrorMessage('Title is required');
+      toast.error('Title is required');
       return;
     }
     
     if (!categoryId) {
-      setErrorMessage('Category is required');
+      toast.error('Category is required');
       return;
     }
     
     if (!content.trim()) {
-      setErrorMessage('Content is required');
+      toast.error('Content is required');
       return;
     }
     
     if (!featuredImage || !featuredImage.url) {
-      setErrorMessage('Featured image is required');
+      toast.error('Featured image is required');
       return;
     }
 
@@ -114,7 +115,7 @@ export default function CreateNewsPage() {
       // Convert featuredImage to the required images array format
       const newsImages = featuredImage ? [featuredImage] : [];
       
-      await createNews({
+      const response = await createNews({
         variables: {
           input: {
             title,
@@ -132,9 +133,10 @@ export default function CreateNewsPage() {
       // Clear the saved draft after successful submission
       localStorage.removeItem(DRAFT_STORAGE_KEY);
       
+      toast.success('News article created successfully!');
       router.push('/dashboard/news');
     } catch (err: any) {
-      setErrorMessage(err.message || 'An error occurred while creating the news article');
+      toast.error(err.message || 'An error occurred while creating the news article');
     }
   };
   
@@ -169,6 +171,7 @@ export default function CreateNewsPage() {
       setStatus('DRAFT');
       setFeaturedImage(null);
       setTags([]);
+      toast.success('Draft cleared successfully');
     }
   };
   
