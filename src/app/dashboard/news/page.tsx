@@ -49,6 +49,7 @@ export default function NewsListPage() {
   const filter = status ? { status } : undefined;
   
   // Debug logging
+  // don't forget to remove console.logs
   useEffect(() => {
     console.log('Current filter:', filter);
     console.log('Current status:', status);
